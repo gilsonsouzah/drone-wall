@@ -9,10 +9,12 @@ module.exports = [ "$rootScope",
 
         var findBuild = function ( commit )
         {
+            console.log('Build length inside Builds js', builds.length);
             for( var i = 0; i < builds.length; i++ )
             {
-                if( builds[ i ].commit === commit )
+                if( builds[ i ].id === commit )
                 {
+                    console.log('Find Build', builds[i]);
                     return builds[ i ];
                 }
             }
@@ -30,12 +32,19 @@ module.exports = [ "$rootScope",
 
         var parseBuild = function ( build, developer )
         {
-            var currentBuild = findBuild( build.commit ) || addBuild( build, developer );
 
-            currentBuild.startedAt  = build.startedAt;
-            currentBuild.finishedAt = build.finishedAt;
-            currentBuild.updatedAt  = build.updatedAt;
+            console.log('Bulid Recevied on Build JS',build);
+
+            console.log('Bulid Status',build.status);
+
+            var currentBuild = findBuild(build.repo_id) || addBuild( build, developer );
+
+            currentBuild.startedAt  = build.started;
+            currentBuild.finishedAt = build.finished;
+            currentBuild.updatedAt  = build.updated;
             currentBuild.status     = build.status;
+
+            console.log('Current Build status',currentBuild.status);
 
             if( currentBuild.status === "success" )
             {
@@ -51,6 +60,7 @@ module.exports = [ "$rootScope",
             {
                 builds.shift();
             }
+            console.log('Parse Build', builds);
         };
 
         return {

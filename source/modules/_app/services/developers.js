@@ -15,7 +15,7 @@ module.exports = [ "$rootScope", "$q",
 
             for( var i = 0; i < developers.length; i++ )
             {
-                if( build.author === developers[ i ].username )
+                if( build.author_name === developers[ i ].author_name )
                 {
                     found = true;
                     deferred.resolve( developers[ i ] );
@@ -37,9 +37,9 @@ module.exports = [ "$rootScope", "$q",
                     if( source )
                     {
                         angular.extend( newDeveloper, {
-                            username: source.author,
-                            email: source.authorEmail,
-                            avatar: source.authorAvatar
+                            username: source.author_name,
+                            email: source.author_email,
+                            avatar: source.author_avatar
                         } );
 
                         developers.push( newDeveloper );

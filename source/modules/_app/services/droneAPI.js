@@ -1,5 +1,7 @@
 "use strict";
 
+const drone = require('drone-node');
+
 module.exports = [ "$q", "$filter", "API", "Settings",
 
     function ( $q, $filter, API, Settings )
@@ -58,10 +60,19 @@ module.exports = [ "$q", "$filter", "API", "Settings",
         {
             var deferred = $q.defer();
 
-            apiInterface.$get( "user/feed" ).then( function ( response )
-            {
-                var builds = response.data;
 
+            var client = new drone.Client({
+                 url: path,
+                 token: Settings.token
+                });
+
+            client.recentBuilds().then( function ( response )
+            {
+                var builds = response;
+
+                console.log(builds);
+
+                console.log('Type', angular.isArray( builds ));
                 if( angular.isArray( builds ) )
                 {
                     if( filters.include.length )
@@ -74,7 +85,9 @@ module.exports = [ "$q", "$filter", "API", "Settings",
                     }
                 }
 
-                response.data = builds;
+                response = builds;
+
+                console.log(response);
 
                 deferred.resolve( response );
             },
