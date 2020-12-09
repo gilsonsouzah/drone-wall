@@ -6,9 +6,11 @@ module.exports = [ "$rootScope", "Settings",
     {
         var repos = [];
 
+        console.log('Main Branch', Settings.mainBranch);
+
         var checkMerge = ( build ) => build.event === "push" && build.message.match( /Merge pull request #([0-9]+)/i );
         var pushToMain = ( build ) => Settings.mainBranch === "*" ||
-                                      build.branch.toUpperCase() === Settings.mainBranch.toUpperCase();
+                                      build.default_branch.toUpperCase() === Settings.mainBranch.toUpperCase();
 
         var getPullID = function ( build )
         {
@@ -32,7 +34,7 @@ module.exports = [ "$rootScope", "Settings",
         {
             for( var i = 0; i < repos.length; i++ )
             {
-                if( repos[ i ].fullName === fullName )
+                if( repos[ i ].slug === fullName )
                 {
                     return repos[ i ];
                 }
@@ -44,12 +46,12 @@ module.exports = [ "$rootScope", "Settings",
         var addRepo = function ( build, developer )
         {
             var newRepo = {
-                fullName:  build.fullName,
+                fullName:  build.slug,
                 name:      build.name,
-                owner:     build.owner,
+                owner:     build.namespace,
                 pulls:     [],
                 lastMerge: null,
-                developer: checkMerge( build ) && pushToMain( build ) ? developer : {}
+                developer: checkMerge( build.build ) && pushToMain( build.build ) ? developer : {}
             };
 
             repos.push( newRepo );
@@ -93,15 +95,19 @@ module.exports = [ "$rootScope", "Settings",
 
         var parseBuild = function ( build, developer )
         {
-            var currentRepo = findRepo( build.fullName ) || addRepo( build, developer );
+
+            console.log('Full Name',build.slug);
+            var currentRepo = findRepo( build.slug ) || addRepo( build, developer );
             var currentPull = null;
             var pullIndex;
 
-            build.pullID = getPullID( build );
+            console.log('Current Repo', currentRepo);
 
-            if( build.event === "pull_request" )
+            build.pullID = getPullID( build.build );
+
+            if( build.build.event === "pull_request" )
             {
-                pullIndex = findPullIndex( currentRepo.pulls, build.pullID );
+                pullIndex = findPullIndex( currentRepo.pulls, build.build.pullID );
 
                 if( pullIndex !== null )
                 {
@@ -109,26 +115,26 @@ module.exports = [ "$rootScope", "Settings",
                     currentPull            = currentRepo.pulls[ pullIndex ];
 
                     // Toggle status if this is the first fresh build coming in
-                    currentPull.status     = ( currentPull.buildCount === 0 && build.status === "running" ) ?
-                                             build.status : currentPull.status;
+                    currentPull.status     = ( currentPull.buildCount === 0 && build.build.status === "running" ) ?
+                                             build.build.status : currentPull.status;
 
                     // Increment or decrement build count, don't let it go below zero (possible during first load)
-                    currentPull.buildCount = currentPull.buildCount + ( build.status === "running" ? 1 : -1 );
+                    currentPull.buildCount = currentPull.buildCount + ( build.build.status === "running" ? 1 : -1 );
                     currentPull.buildCount = currentPull.buildCount < 0 ? 0 : currentPull.buildCount;
 
                     // Update status if all active builds have completed
-                    currentPull.status     = currentPull.buildCount > 0 ? currentPull.status : build.status;
+                    currentPull.status     = currentPull.buildCount > 0 ? currentPull.status : build.build.status;
 
                     // Always update the updated time and working status
-                    currentPull.updatedAt  = build.updatedAt;
-                    currentPull.working    = build.working;
+                    currentPull.updatedAt  = build.build.updated;
+                    currentPull.working    = build.build.working;
                 }
                 else
                 {
                     // Add a new pull request
                     var newPull = angular.extend(
                         {},
-                        build,
+                        build.build,
                         {
                             merging: false,
                             buildCount: ( build.status === "running" ? 1 : 0 ),
@@ -144,6 +150,8 @@ module.exports = [ "$rootScope", "Settings",
                 if( checkMerge( build ) )
                 {
                     pullIndex = findPullIndex( currentRepo.pulls, build.pullID );
+
+                    console.log('Build inside CheckMerge',build);
 
                     // Remove merged pull request
                     if( pullIndex !== null )
@@ -168,9 +176,9 @@ module.exports = [ "$rootScope", "Settings",
                 // Update repo if latest push is from the configured main branch
                 if( pushToMain( build ) && build.status !== "pending" )
                 {
-                    if( !currentRepo.lastMerge || build.startedAt >= currentRepo.lastMerge )
+                    if( !currentRepo.lastMerge || build.started >= currentRepo.lastMerge )
                     {
-                        currentRepo.lastMerge = build.startedAt;
+                        currentRepo.lastMerge = build.started;
                         currentRepo.status    = build.status;
                         currentRepo.developer = checkMerge( build ) ? currentRepo.developer : developer;
                     }

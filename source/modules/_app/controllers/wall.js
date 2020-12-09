@@ -22,7 +22,7 @@ module.exports = [ "$rootScope", "$timeout", "$interval", "$filter", "$q",
         ctrl.maxLeaders = 4;
 
         ctrl.now     = moment();
-        var pollTime = moment( "1990-01-01", "YYYY-MM-DD" );
+        var pollTime = moment( "2020-09-07", "YYYY-MM-DD" );
 
         var resetGlobalTotals = function ()
         {
@@ -57,7 +57,11 @@ module.exports = [ "$rootScope", "$timeout", "$interval", "$filter", "$q",
 
                 DroneAPI.getLatest().then( function ( response )
                 {
-                    var builds = response.data;
+                    var builds = response;
+
+                    console.log('Builds from API',builds);
+
+                    console.log(angular.isArray( builds ));
 
                     if( angular.isArray( builds ) )
                     {
@@ -65,34 +69,48 @@ module.exports = [ "$rootScope", "$timeout", "$interval", "$filter", "$q",
                         builds = builds.map( function ( build )
                         {
                             build.updatedAt = Math.max(
-                                build.createdAt  || 0,
+                                build.build.created  || 0,
                                 build.enqueuedAt || 0,
-                                build.startedAt  || 0,
-                                build.finishedAt || 0
+                                build.build.started  || 0,
+                                build.build.finished || 0
                             );
-                            build.working = build.finishedAt === 0 ? 1 : 0;
+                            build.working = build.finished === 0 ? 1 : 0;
+
+                            console.log('Build details -->',build.updatedAt, build.working);
+
+                            console.log('Build-->',build);
 
                             return build;
                         } );
 
                         // Process oldest record first, so newer ones cascade
-                        builds = $filter( "orderBy" )( builds, "updatedAt" );
+                        builds = $filter( "orderBy" )( builds, "updated" );
 
-                        // Record when builds started to be monitored
+                        console.log('Build Before filter-->',builds,builds.length);
+
+                        //Record when builds started to be monitored
                         ctrl.watchTime = ctrl.watchTime ||
-                            ( builds.length && builds[ 0 ].updatedAt * 1000 ) || Date.now();
+                            ( builds.length && builds[ 0 ].updated * 1000 ) || Date.now();
 
                         // Only keep builds that have changed since the last poll
                         builds = $filter( "filter" )( builds, function ( build )
                         {
-                            if( pollTime.diff( build.updatedAt * 1000 ) < 0 )
+                            console.log('Build updated', build.updatedAt);
+                            console.log('Poll Diff',pollTime.diff( build.updated * 100) < 0);
+
+                            if( pollTime.diff(build.updatedAt * 1000) < 0 )
                             {
-                                pollTime = moment( build.updatedAt * 1000 );
+                                pollTime = moment(build.updatedAt * 1000);
+                                console.log('Poll Moment',pollTime);
+
+                                console.log('Updated Build time', build.updated);
                                 return true;
                             }
 
                             return false;
                         } );
+
+                        console.log('Build after filter-->',builds);
 
                         var deferred  = $q.defer();
                         var postParse = function ()
@@ -155,14 +173,19 @@ module.exports = [ "$rootScope", "$timeout", "$interval", "$filter", "$q",
                         {
                             var counter = 0;
 
+                            console.log("Bufsfskdskdgsd--->",builds);
+
                             // Convoluted loop that only loops once promises resolve
                             var parser = function ( thisBuild )
                             {
                                 counter++;
+                                console.log('Counter -->',counter);
 
-                                Developers.parseBuild( thisBuild ).then( function ( currentDeveloper )
+                                Developers.parseBuild( thisBuild.build ).then( function ( currentDeveloper )
                                 {
-                                    Builds.parseBuild( thisBuild, currentDeveloper );
+                                    console.log('This Build', thisBuild);
+                                    console.log("Build length", builds.length);
+                                    Builds.parseBuild( thisBuild.build, currentDeveloper );
                                     Repos.parseBuild( thisBuild, currentDeveloper );
 
                                     if( counter < builds.length )
@@ -228,6 +251,8 @@ module.exports = [ "$rootScope", "$timeout", "$interval", "$filter", "$q",
         } );
 
         // Update running totals
+
+        console.log('Buid Counts',ctrl.buildCount,ctrl.pullCount,ctrl.successCount,ctrl.failedBuild);
 
         $rootScope.$on( "newBuild",     () => ctrl.buildCount++ );
         $rootScope.$on( "newPull",      () => ctrl.pullCount++ );

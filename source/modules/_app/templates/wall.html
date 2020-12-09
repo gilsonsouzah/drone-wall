@@ -82,10 +82,10 @@
                     <span class="branch" ng-if="build.branch !== 'master'">{{ build.branch }}</span>
                     {{ build.message }}
                 </div>
-                <div class="when" ng-if="build.status !== 'pending'">{{ build.startedAt * 1000 | from:wall.now }} ago</div>
+                <div class="when" ng-if="build.status !== 'pending'">{{ build.started * 1000 | from:wall.now }} ago</div>
                 <div class="when" ng-if="build.status === 'pending'">Build Pending</div>
-                <div class="duration" ng-if="build.finishedAt > 0">
-                    <i class="fa fa-clock-o"></i> {{ ( build.finishedAt - build.startedAt ) | duration }}
+                <div class="duration" ng-if="build.finished > 0">
+                    <i class="fa fa-clock-o"></i> {{ ( build.finished - build.started ) | duration }}
                 </div>
 
             </li>
